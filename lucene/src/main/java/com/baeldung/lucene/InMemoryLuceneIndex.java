@@ -28,6 +28,8 @@ public class InMemoryLuceneIndex {
 
     private Directory memoryIndex;
     private Analyzer analyzer;
+    
+    private int docId = 1;
 
     public InMemoryLuceneIndex(Directory memoryIndex, Analyzer analyzer) {
         super();
@@ -47,6 +49,7 @@ public class InMemoryLuceneIndex {
             IndexWriter writter = new IndexWriter(memoryIndex, indexWriterConfig);
             Document document = new Document();
 
+            document.add(new TextField("id", ""+docId++, Field.Store.YES));
             document.add(new TextField("title", title, Field.Store.YES));
             document.add(new TextField("body", body, Field.Store.YES));
             document.add(new SortedDocValuesField("title", new BytesRef(title)));
@@ -56,7 +59,9 @@ public class InMemoryLuceneIndex {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
+    }    
+    
+
 
     public List<Document> searchIndex(String inField, String queryString) {
         try {
@@ -88,6 +93,25 @@ public class InMemoryLuceneIndex {
             e.printStackTrace();
         }
     }
+    
+
+    public long deleteIndex(int id) {
+        try {
+        	IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+        	IndexWriter indexWriter = new IndexWriter(memoryIndex, iwc);
+        	
+        	Term term = new Term("id", ""+id);
+        	long cnt = indexWriter.deleteDocuments(term);
+        	indexWriter.flush();
+        	indexWriter.close();
+            return cnt;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return 0;
+
+    }
+
 
     public List<Document> searchIndex(Query query) {
         try {
@@ -124,5 +148,15 @@ public class InMemoryLuceneIndex {
         return null;
 
     }
+    
+    public long numDocs() {
+        try {
+            IndexReader indexReader = DirectoryReader.open(memoryIndex);
+            return indexReader.numDocs();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return -1;
 
+    }
 }

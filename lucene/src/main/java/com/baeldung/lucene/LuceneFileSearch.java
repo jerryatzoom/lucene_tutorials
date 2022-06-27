@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -31,28 +32,38 @@ public class LuceneFileSearch {
     private Directory indexDirectory;
     private StandardAnalyzer analyzer;
 
-    public LuceneFileSearch(Directory fsDirectory, StandardAnalyzer analyzer) {
+    public LuceneFileSearch(Directory indexDirectory, StandardAnalyzer analyzer) {
         super();
-        this.indexDirectory = fsDirectory;
+        this.indexDirectory = indexDirectory;
         this.analyzer = analyzer;
     }
 
-    public void addFileToIndex(String filepath) throws IOException, URISyntaxException {
+    public void addFileToIndex(int id, String filepath) {
 
-        Path path = Paths.get(getClass().getClassLoader().getResource(filepath).toURI());
-        File file = path.toFile();
-        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(analyzer);
-        IndexWriter indexWriter = new IndexWriter(indexDirectory, indexWriterConfig);
-        Document document = new Document();
+        try {
+			Path path = Paths.get(getClass().getClassLoader().getResource(filepath).toURI());
+			File file = path.toFile();
+			
+			IndexWriterConfig indexWriterConfig = new IndexWriterConfig(analyzer);
+			indexWriterConfig.setCodec(new SimpleTextCodec());
+			indexWriterConfig.setUseCompoundFile(false);
+			
+			IndexWriter indexWriter = new IndexWriter(indexDirectory, indexWriterConfig);
+			Document document = new Document();
 
-        FileReader fileReader = new FileReader(file);
-        document.add(new TextField("contents", fileReader));
-        document.add(new StringField("path", file.getPath(), Field.Store.YES));
-        document.add(new StringField("filename", file.getName(), Field.Store.YES));
+			FileReader fileReader = new FileReader(file);
+			document.add(new TextField("id", ""+id, Field.Store.YES));
+			document.add(new TextField("contents", fileReader));
+			document.add(new StringField("path", file.getPath(), Field.Store.YES));
+			document.add(new StringField("filename", file.getName(), Field.Store.YES));
 
-        indexWriter.addDocument(document);
+			indexWriter.addDocument(document);
 
-        indexWriter.close();
+			indexWriter.close();
+		} catch (URISyntaxException | IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     public List<Document> searchFiles(String inField, String queryString) {
@@ -73,6 +84,16 @@ public class LuceneFileSearch {
         }
         return null;
 
+    }
+    
+    public IndexReader getReader() {
+    	try {
+			return DirectoryReader.open(indexDirectory);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	return null;
     }
 
 }
