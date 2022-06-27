@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
@@ -44,16 +45,14 @@ public class LuceneFileSearch {
 			Path path = Paths.get(getClass().getClassLoader().getResource(filepath).toURI());
 			File file = path.toFile();
 			
-			IndexWriterConfig indexWriterConfig = new IndexWriterConfig(analyzer);
-			indexWriterConfig.setCodec(new SimpleTextCodec());
-			indexWriterConfig.setUseCompoundFile(false);
-			
-			IndexWriter indexWriter = new IndexWriter(indexDirectory, indexWriterConfig);
+			IndexWriter indexWriter = getWriter();
 			Document document = new Document();
 
 			FileReader fileReader = new FileReader(file);
+			String contextText = IOUtils.toString(fileReader);
+			
 			document.add(new TextField("id", ""+id, Field.Store.YES));
-			document.add(new TextField("contents", fileReader));
+			document.add(new VecTextField("contents", contextText, Field.Store.YES));
 			document.add(new StringField("path", file.getPath(), Field.Store.YES));
 			document.add(new StringField("filename", file.getName(), Field.Store.YES));
 
@@ -86,6 +85,12 @@ public class LuceneFileSearch {
 
     }
     
+    public void deleteAll() throws IOException {
+    	IndexWriter indexWriter = getWriter();
+    	indexWriter.deleteAll();
+    	indexWriter.close();
+    }
+    
     public IndexReader getReader() {
     	try {
 			return DirectoryReader.open(indexDirectory);
@@ -95,7 +100,16 @@ public class LuceneFileSearch {
 		}
     	return null;
     }
-
+    
+    public IndexWriter getWriter() throws IOException {
+		
+		IndexWriterConfig indexWriterConfig = new IndexWriterConfig(analyzer);
+		indexWriterConfig.setCodec(new SimpleTextCodec());
+		indexWriterConfig.setUseCompoundFile(false);
+		
+		IndexWriter indexWriter = new IndexWriter(indexDirectory, indexWriterConfig);
+		return indexWriter;
+    }
 }
 
 
